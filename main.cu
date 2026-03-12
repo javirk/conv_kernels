@@ -85,6 +85,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "kernels/0_cutlass.cu"
 #include "kernels/1_naiveconv.cu"
 #include "automatic_kernels/2_filter_registers.cu"
+#include "automatic_kernels/4_more_oc_per_thread.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -146,10 +147,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_filter_reg_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_more_oc_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_filter_reg_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_more_oc_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -164,9 +165,13 @@ int main()
     float const tflops_naive{calculate_tflops(C_in, C_out, H, W, latency_naive)};
     print_latency("1. Naive 3x3 Conv2D", latency_naive, tflops_naive);
 
-    float const latency{profile_conv2d_implementation<float>(&launch_filter_reg_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const latency2{profile_conv2d_implementation<float>(&launch_filter_reg_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const tflops2{calculate_tflops(C_in, C_out, H, W, latency2)};
+    print_latency("2. Filter Reg 3x3 Conv2D", latency2, tflops2);
+
+    float const latency{profile_conv2d_implementation<float>(&launch_more_oc_conv2d_3x3<float>, C_in, C_out, H, W)};
     float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
-    print_latency("2. Filter Reg 3x3 Conv2D", latency, tflops);
+    print_latency("4. More OC/Thread 3x3 Conv2D", latency, tflops);
 
 
 
