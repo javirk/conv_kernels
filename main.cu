@@ -99,6 +99,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/26_wmma_nhwc_vec4.cu"
 #include "automatic_kernels/28_wmma_nhwc_vec4_filter.cu"
 #include "automatic_kernels/29_wmma_nhwc_large_tile.cu"
+#include "automatic_kernels/32_wmma_nhwc_transposed_filter.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -160,10 +161,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_nhwc_large_tile_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_wmma_nhwc_transposed_filter_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_large_tile_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_transposed_filter_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -225,6 +226,10 @@ int main()
     float const latency29{profile_nhwc_large_tile_conv2d(C_in, C_out, H, W)};
     float const tflops29{calculate_tflops(C_in, C_out, H, W, latency29)};
     print_latency("29. WMMA NHWC LargeTile Conv2D", latency29, tflops29);
+
+    float const latency32{profile_nhwc_transposed_filter_conv2d(C_in, C_out, H, W)};
+    float const tflops32{calculate_tflops(C_in, C_out, H, W, latency32)};
+    print_latency("32. WMMA NHWC TransFilter Conv2D", latency32, tflops32);
 
     return 0;
 }
