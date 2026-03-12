@@ -104,6 +104,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/36_wmma_nhwc_fp16.cu"
 #include "automatic_kernels/37_wmma_nhwc_fp16_global.cu"
 #include "automatic_kernels/38_wmma_nhwc_fp16_vec8.cu"
+#include "automatic_kernels/39_wmma_nhwc_fp16_bk32.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -165,10 +166,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_nhwc_fp16_vec8_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_wmma_nhwc_fp16_bk32_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_fp16_vec8_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_fp16_bk32_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -250,6 +251,10 @@ int main()
     float const latency38{profile_nhwc_fp16_vec8_conv2d(C_in, C_out, H, W)};
     float const tflops38{calculate_tflops(C_in, C_out, H, W, latency38)};
     print_latency("38. WMMA NHWC FP16Vec8 Conv2D", latency38, tflops38);
+
+    float const latency39{profile_nhwc_fp16_bk32_conv2d(C_in, C_out, H, W)};
+    float const tflops39{calculate_tflops(C_in, C_out, H, W, latency39)};
+    print_latency("39. WMMA NHWC FP16 BK32 Conv2D", latency39, tflops39);
 
     return 0;
 }
