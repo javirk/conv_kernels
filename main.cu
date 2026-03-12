@@ -93,6 +93,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/10_wmma_2d_spatial.cu"
 #include "automatic_kernels/16_wmma_tuned.cu"
 #include "automatic_kernels/18_wmma_nhwc.cu"
+#include "automatic_kernels/22_wmma_nhwc_occupancy.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -154,10 +155,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_nhwc_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_wmma_nhwc_occupancy_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_nhwc_occupancy_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -196,7 +197,9 @@ int main()
     float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
     print_latency("18. WMMA NHWC Conv2D", latency, tflops);
 
-
+    float const latency22{profile_nhwc_occupancy_conv2d(C_in, C_out, H, W)};
+    float const tflops22{calculate_tflops(C_in, C_out, H, W, latency22)};
+    print_latency("22. WMMA NHWC Occupancy Conv2D", latency22, tflops22);
 
     return 0;
 }
