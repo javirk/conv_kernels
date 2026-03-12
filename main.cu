@@ -76,7 +76,7 @@ constexpr size_t div_up(size_t a, size_t b) { return (a + b - 1) / b; }
 
 void print_latency(std::string const& kernel_name, float latency, float tflops)
 {
-    std::cout << kernel_name << ": " << std::fixed << std::setprecision(2)
+    std::cout << kernel_name << " - Time: " << std::fixed << std::setprecision(2)
               << latency << " ms, " << tflops << " TFLOPS" << std::endl;
 }
 
@@ -84,6 +84,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "kernels/cpu.cu"  // This is for unit testing
 #include "kernels/0_cutlass.cu"
 #include "kernels/1_naiveconv.cu"
+#include "automatic_kernels/2_filter_registers.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -145,23 +146,29 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_naive_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_filter_reg_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_naive_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_filter_reg_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
-
-    // Profiling.
-    std::cout << C_in << " -> " << C_out << " channels, " << H << " x " << W
-              << " spatial" << std::endl;
-    float const latency{profile_conv2d_implementation<float>(&launch_naive_conv2d_3x3<float>, C_in, C_out, H, W)};
-    float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
-    print_latency("1. Naive 3x3 Conv2D", latency, tflops);
 
     // Profiling CUTLASS convolution for reference.
     float const latency_cutlass{profile_cutlass_conv2d_implementation(C_in, C_out, H, W)};
     float const tflops_cutlass{calculate_tflops(C_in, C_out, H, W, latency_cutlass)};
     print_latency("CUTLASS 3x3 Conv2D", latency_cutlass, tflops_cutlass);
+
+    // Profiling.
+    // std::cout << C_in << " -> " << C_out << " channels, " << H << " x " << W
+    //           << " spatial" << std::endl;
+    float const latency_naive{profile_conv2d_implementation<float>(&launch_naive_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const tflops_naive{calculate_tflops(C_in, C_out, H, W, latency_naive)};
+    print_latency("1. Naive 3x3 Conv2D", latency_naive, tflops_naive);
+
+    float const latency{profile_conv2d_implementation<float>(&launch_filter_reg_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
+    print_latency("2. Filter Reg 3x3 Conv2D", latency, tflops);
+
+
 
     return 0;
 }
