@@ -88,6 +88,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/4_more_oc_per_thread.cu"
 #include "automatic_kernels/5_vectorized_input.cu"
 #include "automatic_kernels/6_wmma_implicit_gemm.cu"
+#include "automatic_kernels/7_wmma_smem_tiled.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -149,10 +150,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_wmma_smem_tiled_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_wmma_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_smem_tiled_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -179,9 +180,13 @@ int main()
     float const tflops5{calculate_tflops(C_in, C_out, H, W, latency5)};
     print_latency("5. Vec Input 3x3 Conv2D", latency5, tflops5);
 
-    float const latency{profile_conv2d_implementation<float>(&launch_wmma_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const latency6{profile_conv2d_implementation<float>(&launch_wmma_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const tflops6{calculate_tflops(C_in, C_out, H, W, latency6)};
+    print_latency("6. WMMA Conv2D", latency6, tflops6);
+
+    float const latency{profile_conv2d_implementation<float>(&launch_wmma_smem_tiled_conv2d_3x3<float>, C_in, C_out, H, W)};
     float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
-    print_latency("6. WMMA Conv2D", latency, tflops);
+    print_latency("7. WMMA SMEM Tiled Conv2D", latency, tflops);
 
 
 
