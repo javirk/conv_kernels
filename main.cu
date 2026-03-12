@@ -91,6 +91,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/7_wmma_smem_tiled.cu"
 #include "automatic_kernels/9_wmma_double_buffer.cu"
 #include "automatic_kernels/10_wmma_2d_spatial.cu"
+#include "automatic_kernels/16_wmma_tuned.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -152,10 +153,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
         {
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_2d_spatial_conv2d_3x3<float>, 1, 1, h, w));
+                &launch_wmma_tuned_conv2d_3x3<float>, 1, 1, h, w));
         }
     }
-    assert(verify_conv2d_implementation<float>(&launch_wmma_2d_spatial_conv2d_3x3<float>, C_in, C_out, 32, 32));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_tuned_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -190,9 +191,9 @@ int main()
     float const tflops7{calculate_tflops(C_in, C_out, H, W, latency7)};
     print_latency("7. WMMA SMEM Tiled Conv2D", latency7, tflops7);
 
-    float const latency{profile_conv2d_implementation<float>(&launch_wmma_2d_spatial_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const latency{profile_conv2d_implementation<float>(&launch_wmma_tuned_conv2d_3x3<float>, C_in, C_out, H, W)};
     float const tflops{calculate_tflops(C_in, C_out, H, W, latency)};
-    print_latency("10. WMMA 2D Spatial Conv2D", latency, tflops);
+    print_latency("16. WMMA Tuned Conv2D", latency, tflops);
 
 
 
