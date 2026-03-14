@@ -157,10 +157,12 @@ float calculate_tflops(size_t C_in, size_t C_out, size_t H, size_t W, float late
 
 int main()
 {
-    size_t const C_in{64};
-    size_t const C_out{64};
+    size_t const C_in{16};
+    size_t const C_out{16};
     size_t const H{1024};
     size_t const W{1024};
+
+    std::cout << "Profiling " << C_in << " -> " << C_out << " channels, " << H << " x " << W << std::endl;
 
     // Unit tests.
     for (size_t h{3}; h <= 16; ++h)

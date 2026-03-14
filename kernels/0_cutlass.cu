@@ -7,7 +7,7 @@
 #include "cutlass/epilogue/thread/linear_combination.h"
 #include "cutlass/util/device_memory.h"
 
-using DataType = cutlass::tfloat32_t;
+using DataType = cutlass::half_t;
 
 using ElementInputA = DataType;
 using ElementInputB = DataType;
@@ -23,14 +23,14 @@ using MMAOp = cutlass::arch::OpClassTensorOp;
 using SmArch = cutlass::arch::Sm80;
 
 // Float16 version
-// using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 64>;
-// using WarpShape = cutlass::gemm::GemmShape<64, 64, 64>;
-// using InstructionShape = cutlass::gemm::GemmShape<16, 8, 16>;
+using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 64>;
+using WarpShape = cutlass::gemm::GemmShape<64, 64, 64>;
+using InstructionShape = cutlass::gemm::GemmShape<16, 8, 16>;
 
 // Float32 version
-using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 16>;
-using WarpShape = cutlass::gemm::GemmShape<64, 64, 16>;
-using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
+// using ThreadblockShape = cutlass::gemm::GemmShape<128, 128, 16>;
+// using WarpShape = cutlass::gemm::GemmShape<64, 64, 16>;
+// using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
 
 using SwizzleThreadBlock = cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>;
 constexpr int NumStages = 3;
