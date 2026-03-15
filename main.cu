@@ -87,6 +87,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/1_wmma_implicit_gemm_nhwc.cu"
 #include "automatic_kernels/2_wmma_large_tile_bk32.cu"
 #include "automatic_kernels/7_wmma_double_buffer.cu"
+#include "automatic_kernels/9_wmma_native_half.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -126,6 +127,109 @@ float profile_conv2d_implementation(
     return latency;
 }
 
+// Half-precision verification: uses float CPU reference, half GPU kernel
+bool verify_half_conv2d(
+    std::function<void(half*, half const*, half const*, size_t, size_t, size_t, size_t, cudaStream_t)> conv_function,
+    size_t C_in, size_t C_out, size_t H, size_t W)
+{
+    std::mt19937 gen{0};
+    cudaStream_t stream;
+    size_t const out_H{H - 2};
+    size_t const out_W{W - 2};
+    size_t const input_size{C_in * H * W};
+    size_t const filter_size{C_out * C_in * 9};
+    size_t const output_size{C_out * out_H * out_W};
+
+    std::vector<float> input_f(input_size);
+    std::vector<float> filter_f(filter_size);
+    std::vector<float> output_ref(output_size, 0.0f);
+
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    for (auto& v : input_f) v = dist(gen);
+    for (auto& v : filter_f) v = dist(gen);
+
+    // Convert to half for GPU
+    std::vector<half> input_h(input_size);
+    std::vector<half> filter_h(filter_size);
+    for (size_t i = 0; i < input_size; i++) input_h[i] = __float2half(input_f[i]);
+    for (size_t i = 0; i < filter_size; i++) filter_h[i] = __float2half(filter_f[i]);
+
+    // CPU reference using half-converted values for fair comparison
+    for (size_t oc = 0; oc < C_out; oc++)
+        for (size_t r = 0; r < out_H; r++)
+            for (size_t c = 0; c < out_W; c++) {
+                float sum = 0.0f;
+                for (size_t ic = 0; ic < C_in; ic++)
+                    for (int fy = 0; fy < 3; fy++)
+                        for (int fx = 0; fx < 3; fx++)
+                            sum += __half2float(input_h[ic * H * W + (r + fy) * W + (c + fx)]) *
+                                   __half2float(filter_h[oc * C_in * 9 + ic * 9 + fy * 3 + fx]);
+                output_ref[oc * out_H * out_W + r * out_W + c] = sum;
+            }
+
+    half *d_input, *d_output, *d_filter;
+    CHECK_CUDA_ERROR(cudaMalloc(&d_input, input_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_output, output_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_filter, filter_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_input, input_h.data(), input_size * sizeof(half), cudaMemcpyHostToDevice));
+    CHECK_CUDA_ERROR(cudaMemcpy(d_filter, filter_h.data(), filter_size * sizeof(half), cudaMemcpyHostToDevice));
+
+    conv_function(d_output, d_input, d_filter, C_in, C_out, H, W, stream);
+    CHECK_CUDA_ERROR(cudaStreamSynchronize(stream));
+
+    std::vector<half> output_h(output_size);
+    CHECK_CUDA_ERROR(cudaMemcpy(output_h.data(), d_output, output_size * sizeof(half), cudaMemcpyDeviceToHost));
+
+    bool correct = true;
+    for (size_t i = 0; i < output_size; i++) {
+        float diff = std::abs(__half2float(output_h[i]) - output_ref[i]);
+        float ref_abs = std::abs(output_ref[i]);
+        // Use relative tolerance for FP16
+        if (diff > 0.05f * ref_abs + 0.01f) {
+            correct = false;
+            break;
+        }
+    }
+
+    CHECK_CUDA_ERROR(cudaFree(d_input));
+    CHECK_CUDA_ERROR(cudaFree(d_output));
+    CHECK_CUDA_ERROR(cudaFree(d_filter));
+    CHECK_CUDA_ERROR(cudaStreamDestroy(stream));
+    return correct;
+}
+
+// Half-precision profiling
+float profile_half_conv2d(
+    std::function<void(half*, half const*, half const*, size_t, size_t, size_t, size_t, cudaStream_t)> conv_function,
+    size_t C_in, size_t C_out, size_t H, size_t W)
+{
+    constexpr int num_repeats{100};
+    constexpr int num_warmups{10};
+    cudaStream_t stream;
+    size_t const out_H{H - 2};
+    size_t const out_W{W - 2};
+    size_t const input_size{C_in * H * W};
+    size_t const filter_size{C_out * C_in * 9};
+    size_t const output_size{C_out * out_H * out_W};
+
+    half *d_input, *d_output, *d_filter;
+    CHECK_CUDA_ERROR(cudaMalloc(&d_input, input_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_output, output_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaMalloc(&d_filter, filter_size * sizeof(half)));
+    CHECK_CUDA_ERROR(cudaStreamCreate(&stream));
+
+    std::function<void(cudaStream_t)> const conv_wrapped{
+        std::bind(conv_function, d_output, d_input, d_filter, C_in, C_out, H, W, std::placeholders::_1)};
+    float const latency{measure_performance(conv_wrapped, stream, num_repeats, num_warmups)};
+
+    CHECK_CUDA_ERROR(cudaFree(d_input));
+    CHECK_CUDA_ERROR(cudaFree(d_output));
+    CHECK_CUDA_ERROR(cudaFree(d_filter));
+    CHECK_CUDA_ERROR(cudaStreamDestroy(stream));
+    return latency;
+}
+
 float calculate_tflops(size_t C_in, size_t C_out, size_t H, size_t W, float latency)
 {
     size_t const R{3};
@@ -144,12 +248,11 @@ int main()
 
     std::cout << "Profiling " << C_in << " -> " << C_out << " channels, " << H << " x " << W << std::endl;
 
-    // Unit tests.
+    // Unit tests (half precision).
     for (size_t h{3}; h <= 16; ++h)
         for (size_t w{3}; w <= 16; ++w)
-            assert(verify_conv2d_implementation<float>(
-                &launch_wmma_double_buffer_conv2d_3x3<float>, 1, 1, h, w));
-    assert(verify_conv2d_implementation<float>(&launch_wmma_double_buffer_conv2d_3x3<float>, C_in, C_out, 32, 32));
+            assert(verify_half_conv2d(&launch_wmma_native_half_conv2d_3x3, 1, 1, h, w));
+    assert(verify_half_conv2d(&launch_wmma_native_half_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -157,15 +260,10 @@ int main()
     float const tflops_cutlass{calculate_tflops(C_in, C_out, H, W, latency_cutlass)};
     print_latency("CUTLASS 3x3 Conv2D", latency_cutlass, tflops_cutlass);
 
-    // Profiling naive baseline.
-    float const latency_naive{profile_conv2d_implementation<float>(&launch_naive_conv2d_3x3<float>, C_in, C_out, H, W)};
-    float const tflops_naive{calculate_tflops(C_in, C_out, H, W, latency_naive)};
-    print_latency("1. Naive 3x3 Conv2D", latency_naive, tflops_naive);
-
-    // Profiling latest kernel.
-    float const latency_latest{profile_conv2d_implementation<float>(&launch_wmma_double_buffer_conv2d_3x3<float>, C_in, C_out, H, W)};
+    // Profiling latest kernel (native half).
+    float const latency_latest{profile_half_conv2d(&launch_wmma_native_half_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("7. WMMA Double Buffer", latency_latest, tflops_latest);
+    print_latency("9. WMMA Native Half", latency_latest, tflops_latest);
 
     return 0;
 }
