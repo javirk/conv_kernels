@@ -90,6 +90,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/9_wmma_native_half.cu"
 #include "automatic_kernels/11_wmma_half_coalesced.cu"
 #include "automatic_kernels/12_wmma_half_reg_precomp.cu"
+#include "automatic_kernels/15_wmma_half_padded_ldg.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -253,8 +254,8 @@ int main()
     // Unit tests (half precision).
     for (size_t h{3}; h <= 16; ++h)
         for (size_t w{3}; w <= 16; ++w)
-            assert(verify_half_conv2d(&launch_wmma_half_reg_precomp_conv2d_3x3, 1, 1, h, w));
-    assert(verify_half_conv2d(&launch_wmma_half_reg_precomp_conv2d_3x3, C_in, C_out, 32, 32));
+            assert(verify_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, 1, 1, h, w));
+    assert(verify_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -263,9 +264,9 @@ int main()
     print_latency("CUTLASS 3x3 Conv2D", latency_cutlass, tflops_cutlass);
 
     // Profiling latest kernel.
-    float const latency_latest{profile_half_conv2d(&launch_wmma_half_reg_precomp_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_latest{profile_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("12. WMMA Half RegPrecomp", latency_latest, tflops_latest);
+    print_latency("15. WMMA Half Padded+LDG", latency_latest, tflops_latest);
 
     return 0;
 }
