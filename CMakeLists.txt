@@ -26,5 +26,8 @@ target_include_directories(benchmark_sweep PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty
 target_include_directories(benchmark_sweep PUBLIC ${CMAKE_SOURCE_DIR}/thirdparty/cutlass/tools/util/include)
 target_include_directories(benchmark_sweep PRIVATE ${CMAKE_SOURCE_DIR})
 
+add_executable(test_conv_kernel test_conv_kernel.cu)
+target_include_directories(test_conv_kernel PRIVATE ${CMAKE_SOURCE_DIR})
+
 add_executable(cutlass_example cutlass_example.cu)
 target_link_libraries(cutlass_example PRIVATE CUTLASS)

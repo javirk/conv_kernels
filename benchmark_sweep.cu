@@ -83,29 +83,29 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "kernels/cpu.cu"
 #include "kernels/0_cutlass.cu"
 #include "kernels/1_naiveconv.cu"
-#include "automatic_kernels/2_filter_registers.cu"
-#include "automatic_kernels/4_more_oc_per_thread.cu"
-#include "automatic_kernels/5_vectorized_input.cu"
-#include "automatic_kernels/6_wmma_implicit_gemm.cu"
-#include "automatic_kernels/7_wmma_smem_tiled.cu"
-#include "automatic_kernels/9_wmma_double_buffer.cu"
-#include "automatic_kernels/10_wmma_2d_spatial.cu"
-#include "automatic_kernels/16_wmma_tuned.cu"
-#include "automatic_kernels/18_wmma_nhwc.cu"
-#include "automatic_kernels/22_wmma_nhwc_occupancy.cu"
-#include "automatic_kernels/23_wmma_nhwc_fewer_warps.cu"
-#include "automatic_kernels/25_wmma_nhwc_padded.cu"
-#include "automatic_kernels/26_wmma_nhwc_vec4.cu"
-#include "automatic_kernels/28_wmma_nhwc_vec4_filter.cu"
-#include "automatic_kernels/29_wmma_nhwc_large_tile.cu"
-#include "automatic_kernels/32_wmma_nhwc_transposed_filter.cu"
-#include "automatic_kernels/33_wmma_nhwc_2x_n_tile.cu"
-#include "automatic_kernels/36_wmma_nhwc_fp16.cu"
-#include "automatic_kernels/37_wmma_nhwc_fp16_global.cu"
-#include "automatic_kernels/38_wmma_nhwc_fp16_vec8.cu"
-#include "automatic_kernels/39_wmma_nhwc_fp16_bk32.cu"
-#include "automatic_kernels/40_wmma_nhwc_fp16_bk64.cu"
-#include "automatic_kernels/43_wmma_nhwc_fp16_fused_fx.cu"
+#include "64ch/automatic_kernels/2_filter_registers.cu"
+#include "64ch/automatic_kernels/4_more_oc_per_thread.cu"
+#include "64ch/automatic_kernels/5_vectorized_input.cu"
+#include "64ch/automatic_kernels/6_wmma_implicit_gemm.cu"
+#include "64ch/automatic_kernels/7_wmma_smem_tiled.cu"
+#include "64ch/automatic_kernels/9_wmma_double_buffer.cu"
+#include "64ch/automatic_kernels/10_wmma_2d_spatial.cu"
+#include "64ch/automatic_kernels/16_wmma_tuned.cu"
+#include "64ch/automatic_kernels/18_wmma_nhwc.cu"
+#include "64ch/automatic_kernels/22_wmma_nhwc_occupancy.cu"
+#include "64ch/automatic_kernels/23_wmma_nhwc_fewer_warps.cu"
+#include "64ch/automatic_kernels/25_wmma_nhwc_padded.cu"
+#include "64ch/automatic_kernels/26_wmma_nhwc_vec4.cu"
+#include "64ch/automatic_kernels/28_wmma_nhwc_vec4_filter.cu"
+#include "64ch/automatic_kernels/29_wmma_nhwc_large_tile.cu"
+#include "64ch/automatic_kernels/32_wmma_nhwc_transposed_filter.cu"
+#include "64ch/automatic_kernels/33_wmma_nhwc_2x_n_tile.cu"
+#include "64ch/automatic_kernels/36_wmma_nhwc_fp16.cu"
+#include "64ch/automatic_kernels/37_wmma_nhwc_fp16_global.cu"
+#include "64ch/automatic_kernels/38_wmma_nhwc_fp16_vec8.cu"
+#include "64ch/automatic_kernels/39_wmma_nhwc_fp16_bk32.cu"
+#include "64ch/automatic_kernels/40_wmma_nhwc_fp16_bk64.cu"
+#include "64ch/automatic_kernels/43_wmma_nhwc_fp16_fused_fx.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -285,8 +285,8 @@ int main()
         }, 16});
 
     // Sweep parameters
-    std::vector<size_t> resolutions = {128, 256, 512, 768, 1024};
-    std::vector<size_t> channels = {8, 16, 32, 64, 128, 256};
+    std::vector<size_t> resolutions = {128, 256, 512, 1024};
+    std::vector<size_t> channels = {8, 16, 32, 64};
 
     // Print TSV header
     std::cout << "resolution\tC_in\tC_out\tkernel\ttime_ms\ttflops" << std::endl;
