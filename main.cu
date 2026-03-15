@@ -85,6 +85,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "kernels/0_cutlass.cu"
 #include "kernels/1_naiveconv.cu"
 #include "automatic_kernels/1_wmma_implicit_gemm_nhwc.cu"
+#include "automatic_kernels/2_wmma_large_tile_bk32.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -146,8 +147,8 @@ int main()
     for (size_t h{3}; h <= 16; ++h)
         for (size_t w{3}; w <= 16; ++w)
             assert(verify_conv2d_implementation<float>(
-                &launch_wmma_implicit_gemm_nhwc_conv2d_3x3<float>, 1, 1, h, w));
-    assert(verify_conv2d_implementation<float>(&launch_wmma_implicit_gemm_nhwc_conv2d_3x3<float>, C_in, C_out, 32, 32));
+                &launch_wmma_large_tile_bk32_conv2d_3x3<float>, 1, 1, h, w));
+    assert(verify_conv2d_implementation<float>(&launch_wmma_large_tile_bk32_conv2d_3x3<float>, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -161,9 +162,9 @@ int main()
     print_latency("1. Naive 3x3 Conv2D", latency_naive, tflops_naive);
 
     // Profiling latest kernel.
-    float const latency_1{profile_conv2d_implementation<float>(&launch_wmma_implicit_gemm_nhwc_conv2d_3x3<float>, C_in, C_out, H, W)};
-    float const tflops_1{calculate_tflops(C_in, C_out, H, W, latency_1)};
-    print_latency("2. WMMA Implicit GEMM NHWC", latency_1, tflops_1);
+    float const latency_latest{profile_conv2d_implementation<float>(&launch_wmma_large_tile_bk32_conv2d_3x3<float>, C_in, C_out, H, W)};
+    float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
+    print_latency("2. WMMA Large Tile BK32", latency_latest, tflops_latest);
 
     return 0;
 }
