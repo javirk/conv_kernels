@@ -88,6 +88,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/2_wmma_large_tile_bk32.cu"
 #include "automatic_kernels/7_wmma_double_buffer.cu"
 #include "automatic_kernels/9_wmma_native_half.cu"
+#include "automatic_kernels/11_wmma_half_coalesced.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -251,8 +252,8 @@ int main()
     // Unit tests (half precision).
     for (size_t h{3}; h <= 16; ++h)
         for (size_t w{3}; w <= 16; ++w)
-            assert(verify_half_conv2d(&launch_wmma_native_half_conv2d_3x3, 1, 1, h, w));
-    assert(verify_half_conv2d(&launch_wmma_native_half_conv2d_3x3, C_in, C_out, 32, 32));
+            assert(verify_half_conv2d(&launch_wmma_half_coalesced_conv2d_3x3, 1, 1, h, w));
+    assert(verify_half_conv2d(&launch_wmma_half_coalesced_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -260,10 +261,10 @@ int main()
     float const tflops_cutlass{calculate_tflops(C_in, C_out, H, W, latency_cutlass)};
     print_latency("CUTLASS 3x3 Conv2D", latency_cutlass, tflops_cutlass);
 
-    // Profiling latest kernel (native half).
-    float const latency_latest{profile_half_conv2d(&launch_wmma_native_half_conv2d_3x3, C_in, C_out, H, W)};
+    // Profiling latest kernel.
+    float const latency_latest{profile_half_conv2d(&launch_wmma_half_coalesced_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("9. WMMA Native Half", latency_latest, tflops_latest);
+    print_latency("11. WMMA Half Coalesced", latency_latest, tflops_latest);
 
     return 0;
 }
