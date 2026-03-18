@@ -29,5 +29,8 @@ target_include_directories(benchmark_sweep PRIVATE ${CMAKE_SOURCE_DIR})
 add_executable(test_conv_kernel test_conv_kernel.cu)
 target_include_directories(test_conv_kernel PRIVATE ${CMAKE_SOURCE_DIR})
 
+add_executable(run_kernel run_kernel.cu)
+target_include_directories(run_kernel PRIVATE ${CMAKE_SOURCE_DIR})
+
 add_executable(cutlass_example cutlass_example.cu)
 target_link_libraries(cutlass_example PRIVATE CUTLASS)

@@ -81,7 +81,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 }
 
 // These functions use CHECK_CUDA_ERROR and CHECK_LAST_CUDA_ERROR macros.
-#include "automatic_kernels/27_coalesced_B_load.cu"
+#include "automatic_kernels/29_precomp_k_offsets.cu"
 
 
 // Half-precision profiling
@@ -134,9 +134,9 @@ int main()
     std::cout << "Profiling " << C_in << " -> " << C_out << " channels, " << H << " x " << W << std::endl;
 
     // Profiling latest kernel.
-    float const latency_latest{profile_half_conv2d(&launch_wmma_coalesced_B_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_latest{profile_half_conv2d(&launch_wmma_precomp_k_offsets_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("27. Coalesced B Load", latency_latest, tflops_latest);
+    print_latency("29. Precomp K Offsets", latency_latest, tflops_latest);
 
     return 0;
 }
