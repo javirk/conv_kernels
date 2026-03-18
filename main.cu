@@ -91,6 +91,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/11_wmma_half_coalesced.cu"
 #include "automatic_kernels/12_wmma_half_reg_precomp.cu"
 #include "automatic_kernels/15_wmma_half_padded_ldg.cu"
+#include "automatic_kernels/26_parallel_warp_store.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -207,8 +208,8 @@ float profile_half_conv2d(
     std::function<void(half*, half const*, half const*, size_t, size_t, size_t, size_t, cudaStream_t)> conv_function,
     size_t C_in, size_t C_out, size_t H, size_t W)
 {
-    constexpr int num_repeats{100};
-    constexpr int num_warmups{10};
+    constexpr int num_repeats{10};
+    constexpr int num_warmups{5};
     cudaStream_t stream;
     size_t const out_H{H - 2};
     size_t const out_W{W - 2};
@@ -256,6 +257,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
             assert(verify_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, 1, 1, h, w));
     assert(verify_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, C_in, C_out, 32, 32));
+    for (size_t h{3}; h <= 16; ++h)
+        for (size_t w{3}; w <= 16; ++w)
+            assert(verify_half_conv2d(&launch_wmma_parallel_store_conv2d_3x3, 1, 1, h, w));
+    assert(verify_half_conv2d(&launch_wmma_parallel_store_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -264,9 +269,13 @@ int main()
     print_latency("CUTLASS 3x3 Conv2D", latency_cutlass, tflops_cutlass);
 
     // Profiling latest kernel.
-    float const latency_latest{profile_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_15{profile_half_conv2d(&launch_wmma_half_padded_ldg_conv2d_3x3, C_in, C_out, H, W)};
+    float const tflops_15{calculate_tflops(C_in, C_out, H, W, latency_15)};
+    print_latency("15. WMMA Half Padded+LDG", latency_15, tflops_15);
+
+    float const latency_latest{profile_half_conv2d(&launch_wmma_parallel_store_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("15. WMMA Half Padded+LDG", latency_latest, tflops_latest);
+    print_latency("26. Parallel Warp Store", latency_latest, tflops_latest);
 
     return 0;
 }
