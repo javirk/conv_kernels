@@ -102,6 +102,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/55_unroll8.cu"
 #include "automatic_kernels/56_unroll16.cu"
 #include "automatic_kernels/57_unrollfull.cu"
+#include "automatic_kernels/70_mma_sync_swizzle.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -298,6 +299,7 @@ int main()
     assert(verify_half_conv2d(&launch_wmma_unroll8_conv2d_3x3, C_in, C_out, 32, 32));
     assert(verify_half_conv2d(&launch_wmma_unroll16_conv2d_3x3, C_in, C_out, 32, 32));
     assert(verify_half_conv2d(&launch_wmma_unrollfull_conv2d_3x3, C_in, C_out, 32, 32));
+    assert(verify_half_conv2d(&launch_mma_sync_swizzle_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -350,9 +352,9 @@ int main()
     float const tflops_56{calculate_tflops(C_in, C_out, H, W, latency_56)};
     print_latency("56. Unroll16", latency_56, tflops_56);
 
-    float const latency_latest{profile_half_conv2d(&launch_wmma_unrollfull_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_latest{profile_half_conv2d(&launch_mma_sync_swizzle_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("57. UnrollFull", latency_latest, tflops_latest);
+    print_latency("70. mma.sync+swizzle", latency_latest, tflops_latest);
 
     return 0;
 }
