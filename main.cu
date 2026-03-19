@@ -99,6 +99,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/41_coalesced_store.cu"
 #include "automatic_kernels/42_bk64_no_db.cu"
 #include "automatic_kernels/54_unroll4.cu"
+#include "automatic_kernels/55_unroll8.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -292,6 +293,7 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
             assert(verify_half_conv2d(&launch_wmma_unroll4_conv2d_3x3, 1, 1, h, w));
     assert(verify_half_conv2d(&launch_wmma_unroll4_conv2d_3x3, C_in, C_out, 32, 32));
+    assert(verify_half_conv2d(&launch_wmma_unroll8_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -332,9 +334,13 @@ int main()
     float const tflops_42{calculate_tflops(C_in, C_out, H, W, latency_42)};
     print_latency("42. BK=64 NoDB", latency_42, tflops_42);
 
-    float const latency_latest{profile_half_conv2d(&launch_wmma_unroll4_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_54{profile_half_conv2d(&launch_wmma_unroll4_conv2d_3x3, C_in, C_out, H, W)};
+    float const tflops_54{calculate_tflops(C_in, C_out, H, W, latency_54)};
+    print_latency("54. Unroll4", latency_54, tflops_54);
+
+    float const latency_latest{profile_half_conv2d(&launch_wmma_unroll8_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("54. Unroll4+Bitops", latency_latest, tflops_latest);
+    print_latency("55. Unroll8", latency_latest, tflops_latest);
 
     return 0;
 }
