@@ -97,6 +97,7 @@ void print_latency(std::string const& kernel_name, float latency, float tflops)
 #include "automatic_kernels/33_int_addr_no_spill.cu"
 #include "automatic_kernels/34_reg_offsets.cu"
 #include "automatic_kernels/41_coalesced_store.cu"
+#include "automatic_kernels/42_bk64_no_db.cu"
 
 template <typename T>
 float profile_conv2d_implementation(
@@ -282,6 +283,10 @@ int main()
         for (size_t w{3}; w <= 16; ++w)
             assert(verify_half_conv2d(&launch_wmma_coalesced_store_conv2d_3x3, 1, 1, h, w));
     assert(verify_half_conv2d(&launch_wmma_coalesced_store_conv2d_3x3, C_in, C_out, 32, 32));
+    for (size_t h{3}; h <= 16; ++h)
+        for (size_t w{3}; w <= 16; ++w)
+            assert(verify_half_conv2d(&launch_wmma_bk64_conv2d_3x3, 1, 1, h, w));
+    assert(verify_half_conv2d(&launch_wmma_bk64_conv2d_3x3, C_in, C_out, 32, 32));
     std::cout << "Unit tests passed." << std::endl;
 
     // Profiling CUTLASS convolution for reference.
@@ -314,9 +319,13 @@ int main()
     float const tflops_34{calculate_tflops(C_in, C_out, H, W, latency_34)};
     print_latency("34. Reg Offsets", latency_34, tflops_34);
 
-    float const latency_latest{profile_half_conv2d(&launch_wmma_coalesced_store_conv2d_3x3, C_in, C_out, H, W)};
+    float const latency_41{profile_half_conv2d(&launch_wmma_coalesced_store_conv2d_3x3, C_in, C_out, H, W)};
+    float const tflops_41{calculate_tflops(C_in, C_out, H, W, latency_41)};
+    print_latency("41. Coalesced Store", latency_41, tflops_41);
+
+    float const latency_latest{profile_half_conv2d(&launch_wmma_bk64_conv2d_3x3, C_in, C_out, H, W)};
     float const tflops_latest{calculate_tflops(C_in, C_out, H, W, latency_latest)};
-    print_latency("41. Coalesced Store", latency_latest, tflops_latest);
+    print_latency("42. BK=64 NoDB", latency_latest, tflops_latest);
 
     return 0;
 }
