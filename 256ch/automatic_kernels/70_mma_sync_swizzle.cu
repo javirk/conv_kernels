@@ -205,17 +205,17 @@ mma_sync_swizzle_conv2d_3x3_kernel(
     //   c[1] → row (lane/4),     col (lane%4)*2 + 1
     //   c[2] → row (lane/4 + 8), col (lane%4)*2
     //   c[3] → row (lane/4 + 8), col (lane%4)*2 + 1
-    int const cr0 = lane >> 2;         // 0-7
-    int const cr1 = cr0 + 8;          // 8-15
-    int const cc0 = (lane & 3) << 1;  // 0,2,4,6
-    int const cc1 = cc0 + 1;          // 1,3,5,7
+    int const sr0 = lane >> 2;         // 0-7
+    int const sr1 = sr0 + 8;          // 8-15
+    int const sc0 = (lane & 3) << 1;  // 0,2,4,6
+    int const sc1 = sc0 + 1;          // 1,3,5,7
 
     // Helper to store one 16x8 tile
     #define STORE_TILE(mi, ni, v0, v1, v2, v3) do { \
-        store_buf[cr0 * 8 + cc0] = __float2half(v0); \
-        store_buf[cr0 * 8 + cc1] = __float2half(v1); \
-        store_buf[cr1 * 8 + cc0] = __float2half(v2); \
-        store_buf[cr1 * 8 + cc1] = __float2half(v3); \
+        store_buf[sr0 * 8 + sc0] = __float2half(v0); \
+        store_buf[sr0 * 8 + sc1] = __float2half(v1); \
+        store_buf[sr1 * 8 + sc0] = __float2half(v2); \
+        store_buf[sr1 * 8 + sc1] = __float2half(v3); \
         __syncwarp(); \
         for (int _idx = lane; _idx < 128; _idx += 32) { \
             int _r = _idx & 15; \
